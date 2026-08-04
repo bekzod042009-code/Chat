@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.bekzod042009_code.twa",
+        "sha256_cert_fingerprints": ["83:99:04:2F:2B:44:67:EE:B5:68:1B:ED:9E:6F:F6:55:F4:0E:12:B9:81:CD:FD:50:63:80:D8:7D:A6:DC:02:73"]
+      }
+    }]
