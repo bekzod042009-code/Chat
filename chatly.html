@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Chatly</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #DADEE3;
+    display: flex;
+    justify-content: center;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+  }
+  #app {
+    width: 100%;
+    max-width: 420px;
+    height: 100dvh;
+    max-height: 860px;
+    background: #EEF2F5;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 0 1px #E1E6EA;
+  }
+  .header {
+    height: 58px; min-height: 58px;
+    background: #fff;
+    border-bottom: 1px solid #E7EBEE;
+    display: flex; align-items: center;
+    padding: 0 14px;
+    gap: 10px;
+  }
+  .header-title { font-size: 20px; font-weight: 700; color: #1F2733; flex: 1; }
+  .header-clickable { display: flex; align-items: center; flex: 1; cursor: pointer; gap: 10px; }
+  .back-btn { cursor: pointer; color: #229ED9; display:flex; align-items:center; }
+  .avatar {
+    width: 46px; height: 46px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 16px; flex-shrink: 0;
+    background-size: cover; background-position: center;
+  }
+  .avatar.sm { width: 34px; height: 34px; font-size: 13px; }
+  .avatar.lg { width: 96px; height: 96px; font-size: 32px; }
+  .online-dot {
+    position: absolute; bottom: 0; right: 0;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #4CD263; border: 2px solid #fff;
+  }
+  .list { flex: 1; overflow-y: auto; }
+  .list-item {
+    display: flex; align-items: center;
+    padding: 10px 14px; background: #fff;
+    border-bottom: 1px solid #F0F2F4; cursor: pointer;
+  }
+  .list-title { font-size: 15.5px; font-weight: 600; color: #1F2733; }
+  .list-sub { font-size: 13px; color: #8A929B; margin-top: 2px; }
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center;
+    margin-top: 80px; padding: 20px; text-align: center; color: #707579; font-size: 14px;
+  }
+  .fab-row { display: flex; gap: 8px; padding: 10px; background: #fff; border-top: 1px solid #E7EBEE; }
+  .fab {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 0; border-radius: 12px; border: none;
+    background: #F0F2F4; color: #1F2733; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .fab.primary { background: #229ED9; color: #fff; }
+  .login-wrap {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; padding: 30px;
+  }
+  .big-logo {
+    width: 84px; height: 84px; border-radius: 24px;
+    background: linear-gradient(135deg,#2AABEE,#229ED9);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px; box-shadow: 0 8px 20px rgba(34,158,217,0.35);
+    font-size: 40px;
+  }
+  .login-title { font-size: 26px; font-weight: 800; color: #1F2733; margin-bottom: 6px; }
+  .login-sub { font-size: 14px; color: #707579; margin-bottom: 26px; text-align: center; }
+  .text-input {
+    width: 100%; padding: 13px 16px; border-radius: 12px;
+    border: 1.5px solid #E1E6EA; font-size: 15px; outline: none; margin-bottom: 14px;
+  }
+  .text-input.error { border-color: #D64545; }
+  .field-error { color: #D64545; font-size: 12.5px; margin: -8px 0 12px 4px; }
+  .primary-btn {
+    width: 100%; padding: 13px 0; border-radius: 12px; border: none;
+    background: #229ED9; color: #fff; font-size: 15.5px; font-weight: 700; cursor: pointer;
+  }
+  .primary-btn:disabled { opacity: 0.5; cursor: default; }
+  .secondary-btn {
+    width: 100%; padding: 12px 0; border-radius: 12px; border: 1.5px solid #E1E6EA;
+    background: #fff; color: #229ED9; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 10px;
+  }
+  .msg-area { flex: 1; overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .date-sep { text-align: center; margin: 6px 0 10px; }
+  .date-sep span { background: #fff; color: #707579; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 12px; box-shadow: 0 1px 1px rgba(0,0,0,0.06); }
+  .row { display: flex; margin-bottom: 6px; }
+  .row.mine { justify-content: flex-end; }
+  .row.theirs { justify-content: flex-start; }
+  .bubble-wrap { max-width: 76%; display: flex; flex-direction: column; }
+  .bubble-wrap.mine { align-items: flex-end; }
+  .bubble { padding: 8px 11px; border-radius: 16px; cursor: pointer; animation: popIn .18s ease-out; }
+  .bubble.mine { background: linear-gradient(135deg,#3B9FE0,#229ED9); color: #fff; border-bottom-right-radius: 4px; }
+  .bubble.theirs { background: #fff; color: #1F2733; border-bottom-left-radius: 4px; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
+  .bubble.sticker { background: none !important; box-shadow: none !important; padding: 0; animation: popBounce .35s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes popIn { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes popBounce { 0% { transform: scale(.3); opacity: 0; } 70% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+  .sender-name { font-size: 12.5px; font-weight: 700; color: #229ED9; margin-bottom: 2px; }
+  .msg-text { font-size: 15px; line-height: 1.35; word-break: break-word; white-space: pre-wrap; }
+  .msg-text.deleted { font-style: italic; opacity: 0.65; }
+  .msg-img { max-width: 220px; border-radius: 10px; display: block; }
+  .msg-sticker { width: 120px; height: 120px; object-fit: contain; display: block; }
+  .msg-sticker-emoji { font-size: 72px; line-height: 1; }
+  .msg-meta { font-size: 10.5px; text-align: right; margin-top: 3px; display: flex; justify-content: flex-end; align-items: center; gap: 3px; }
+  .edited-tag { font-size: 10px; opacity: 0.8; }
+  .action-row { display: flex; gap: 6px; margin: 4px 0; }
+  .action-btn {
+    font-size: 11.5px; padding: 4px 10px; border-radius: 20px; border: none;
+    background: #E7EBEE; color: #1F2733; cursor: pointer; font-weight: 600;
+  }
+  .action-btn.danger { background: #FCE4E4; color: #D64545; }
+  .input-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #fff; border-top: 1px solid #E7EBEE; position: relative; }
+  .icon-btn { cursor: pointer; color: #707579; display: flex; align-items: center; }
+  .msg-input { flex: 1; border: none; background: #F0F2F4; border-radius: 20px; padding: 10px 16px; font-size: 15px; outline: none; }
+  .send-btn {
+    width: 38px; height: 38px; border-radius: 50%; background: #229ED9; border: none;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+  }
+  .send-btn:disabled { opacity: 0.5; }
+  .editing-bar {
+    display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+    background: #F0F7FC; border-top: 1px solid #E7EBEE; font-size: 12.5px; color: #229ED9;
+  }
+  .panel {
+    position: absolute; left: 0; right: 0; bottom: 100%; height: 280px;
+    background: #fff; border-top: 1px solid #E7EBEE; display: flex; flex-direction: column; z-index: 5;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+  }
+  .panel-tabs { display: flex; border-bottom: 1px solid #F0F2F4; overflow-x: auto; }
+  .panel-tab { flex-shrink: 0; text-align: center; padding: 9px 12px; font-size: 12.5px; font-weight: 600; color: #8A929B; cursor: pointer; white-space: nowrap; }
+  .panel-tab.active { color: #229ED9; border-bottom: 2px solid #229ED9; }
+  .panel-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 10px; align-content: start; }
+  .emoji-cell { font-size: 24px; text-align: center; cursor: pointer; padding: 4px 0; border-radius: 8px; }
+  .emoji-cell:active { background: #F0F2F4; }
+  .sticker-cell { width: 100%; aspect-ratio: 1; object-fit: contain; cursor: pointer; }
+  .sticker-add { display: flex; align-items: center; justify-content: center; border: 2px dashed #D6DBE0; border-radius: 10px; cursor: pointer; color: #8A929B; aspect-ratio: 1; font-size: 22px; }
+  .modal-bg {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: flex-end; z-index: 10;
+  }
+  .modal-card { width: 100%; background: #fff; border-radius: 18px 18px 0 0; padding: 20px; }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .modal-title { font-size: 17px; font-weight: 700; color: #1F2733; }
+  .modal-error { color: #D64545; font-size: 13px; margin: -6px 0 12px 2px; }
+  .profile-wrap { flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 30px 20px; }
+  .profile-name { font-size: 21px; font-weight: 800; color: #1F2733; margin-top: 14px; }
+  .profile-sub { font-size: 13.5px; color: #8A929B; margin-top: 4px; }
+  .profile-field { width: 100%; margin-top: 22px; padding: 12px 0; border-bottom: 1px solid #E7EBEE; }
+  .profile-field-label { font-size: 12px; color: #8A929B; margin-bottom: 3px; }
+  .profile-field-value { font-size: 15px; color: #1F2733; font-weight: 500; }
+  .conn-banner { background:#FFF6DA; color:#8A6D1E; font-size:12.5px; text-align:center; padding:6px; }
+  .pinned-bar { display:flex; align-items:center; gap:8px; padding:8px 14px; background:#F0F7FC; border-bottom:1px solid #E7EBEE; cursor:pointer; }
+  .pinned-bar .txt { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; color:#1F2733; }
+  .search-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#fff; border-bottom:1px solid #E7EBEE; }
+  .search-bar input { flex:1; border:none; background:#F0F2F4; border-radius:20px; padding:8px 14px; font-size:14px; outline:none; }
+  .msg-dim { opacity: 0.25; }
+  .msg-highlight .msg-text { background: #FFF3B0; border-radius: 4px; padding: 1px 3px; }
+  .mic-btn.recording { color:#D64545; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  .forward-list { max-height: 320px; overflow-y: auto; }
+  .theme-row { display:flex; align-items:center; justify-content:space-between; width:100%; padding:12px 0; border-bottom:1px solid #E7EBEE; }
+  .switch { width:44px; height:26px; border-radius:14px; background:#D6DBE0; position:relative; cursor:pointer; flex-shrink:0; }
+  .switch.on { background:#229ED9; }
+  .switch .knob { width:20px; height:20px; border-radius:50%; background:#fff; position:absolute; top:3px; left:3px; transition:left .15s; box-shadow:0 1px 2px rgba(0,0,0,0.2); }
+  .switch.on .knob { left:21px; }
+  #app.dark { background:#17212B; }
+  #app.dark .header, #app.dark .list-item, #app.dark .fab-row, #app.dark .input-bar, #app.dark .modal-card, #app.dark .panel, #app.dark .search-bar, #app.dark .editing-bar, #app.dark .pinned-bar { background:#1E2833; border-color:#2B3A47; }
+  #app.dark .list { background:#17212B; }
+  #app.dark .header-title, #app.dark .list-title, #app.dark .profile-name, #app.dark .profile-field-value, #app.dark .modal-title, #app.dark .msg-text { color:#E8ECEF; }
+  #app.dark .list-sub, #app.dark .profile-sub, #app.dark .profile-field-label, #app.dark .field-error { color:#8A97A3; }
+  #app.dark .bubble.theirs { background:#243642; color:#E8ECEF; box-shadow:none; }
+  #app.dark .fab { background:#243642; color:#E8ECEF; }
+  #app.dark .msg-input, #app.dark .search-bar input, #app.dark .text-input { background:#243642; color:#E8ECEF; border-color:#2B3A47; }
+  #app.dark .text-input { border-color:#2B3A47; }
+  #app.dark .msg-area { background:#0E1621; }
+  #app.dark .action-btn { background:#2B3A47; color:#E8ECEF; }
+  #app.dark .panel-tab { color:#8A97A3; }
+  .hidden { display: none !important; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ---------------- Firebase setup ----------------
+const firebaseConfig = {
+  apiKey: "AIzaSyAvnVbX-TI4QdXZ81kn6CVQBN5_ujdoRtQ",
+  authDomain: "chatly-app-32efe.firebaseapp.com",
+  databaseURL: "https://chatly-app-32efe-default-rtdb.firebaseio.com",
+  projectId: "chatly-app-32efe",
+  storageBucket: "chatly-app-32efe.firebasestorage.app",
+  messagingSenderId: "870541929009",
+  appId: "1:870541929009:web:40d992798a5322db844310",
+  measurementId: "G-S4C843D8QE"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+function localGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
+function localSet(key, val) { try { localStorage.setItem(key, val); } catch {} }
+
+const COLORS = ["#229ED9", "#E17076", "#7BC862", "#FAA774", "#65AADD", "#A695E7", "#EE7AAE"];
+const colorFor = (name) => COLORS[[...name].reduce((a,c)=>a+c.charCodeAt(0),0) % COLORS.length];
+const initials = (name) => name.trim().slice(0,2).toUpperCase();
+const genCode = () => Math.random().toString(36).slice(2,7).toUpperCase();
+const genUserId = () => String(Math.floor(1000000000 + Math.random()*8999999999));
+const dmId = (a,b) => "dm_" + [a,b].sort().join("__").replace(/[.#$\[\]\/\s]/g, "_");
+const safeKey = (s) => s.replace(/[.#$\[\]\/\s]/g, "_");
+const now = () => Date.now();
+const esc = (s) => (s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const EMOJI_CATEGORIES = {
+  "Yuzlar": ["😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🤐","🤨","😐","😑","😶","😏","😒","🙄","😬","🤥","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧","🥵","🥶","🥴","😵","🤯","🤠","🥳","😎","🤓","🧐","😕","😟","🙁","😮","😯","😲","😳","🥺","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿","💀","💩","🤡","👹","👺","👻","👽","🤖","😺","😸","😹","😻","😼","😽","🙀","😿","😾"],
+  "Imo-ishoralar": ["👋","🤚","🖐️","✋","🖖","👌","🤌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","🖕","👇","☝️","👍","👎","✊","👊","🤛","🤜","👏","🙌","👐","🤲","🤝","🙏","✍️","💅","🤳","💪","🦾","🦵","🦿","🦶","👂","👃","🧠","🦷","🦴","👀","👁️","👅","👄"],
+  "Hayvonlar": ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐻‍❄️","🐨","🐯","🦁","🐮","🐷","🐽","🐸","🐵","🙈","🙉","🙊","🐒","🐔","🐧","🐦","🐤","🐣","🐥","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🪱","🐛","🦋","🐌","🐞","🐜","🪰","🪲","🪳","🦟","🦗","🕷️","🕸️","🦂","🐢","🐍","🦎","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬","🐳","🐋","🦈","🐊","🐅","🐆","🦓","🦍","🦧","🦣","🐘","🦛","🦏","🐪","🐫","🦒","🦘","🐃","🐂","🐄","🐎","🐖","🐏","🐑","🦙","🐐","🦌","🐕","🐩","🦮","🐈","🐓","🦃","🦤","🦚","🦜","🦢","🦩","🕊️","🐇","🦝","🦨","🦡","🦫","🦦","🦥","🐁","🐀","🐿️","🦔"],
+  "Ovqat": ["🍏","🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🥦","🥬","🥒","🌶️","🫑","🌽","🥕","🫒","🧄","🧅","🥔","🍠","🥐","🥯","🍞","🥖","🥨","🧀","🥚","🍳","🧈","🥞","🧇","🥓","🥩","🍗","🍖","🌭","🍔","🍟","🍕","🫓","🥪","🥙","🧆","🌮","🌯","🫔","🥗","🥘","🫕","🍝","🍜","🍲","🍛","🍣","🍱","🥟","🦪","🍤","🍙","🍚","🍘","🍥","🥠","🥮","🍢","🍡","🍧","🍨","🍦","🥧","🧁","🍰","🎂","🍮","🍭","🍬","🍫","🍿","🍩","🍪","🌰","🥜","🍯","🥛","🍼","☕","🍵","🧃","🥤","🧋","🍶","🍺","🍻","🥂","🍷","🥃","🍸","🍹","🧉","🍾"],
+  "Sport": ["⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🥏","🎱","🪀","🏓","🏸","🏒","🏑","🥍","🏏","🪃","🥅","⛳","🪁","🏹","🎣","🤿","🥊","🥋","🎽","🛹","🛼","🛷","⛸️","🥌","🎿","⛷️","🏂","🏋️","🤼","🤸","⛹️","🤾","🏌️","🏇","🧘","🏄","🏊","🤽","🚣","🧗","🚵","🚴","🏆","🥇","🥈","🥉","🏅","🎖️","🏵️"],
+  "Buyumlar": ["⌚","📱","💻","⌨️","🖥️","🖨️","🖱️","💽","💾","💿","📷","📸","📹","🎥","📞","☎️","📟","📺","📻","🎙️","🎚️","🎛️","⏱️","⏲️","⏰","🕰️","⌛","⏳","📡","🔋","🔌","💡","🔦","🕯️","🪔","🧯","🛢️","💸","💵","💴","💶","💷","💰","💳","💎","⚖️","🧰","🔧","🔨","⚒️","🛠️","⛏️","🔩","⚙️","🧱","⛓️","🧲","🔫","💣","🧨","🪓","🔪","🗡️","⚔️","🛡️","🚬","⚰️","🪦","⚱️","🏺","🔮","📿","🧿","💈","⚗️","🔭","🔬","🕳️","🩹","💊","💉","🩸","🧬","🦠","🧫","🧪","🌡️"],
+  "Belgilar": ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","☮️","✝️","☪️","🕉️","☸️","✡️","🔯","🕎","☯️","☦️","🛐","⛎","♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓","🆔","⚛️","🉑","☢️","☣️","📴","📳","🈶","🈚","🈸","🈺","🈷️","✴️","🆚","💮","🉐","㊙️","㊗️","🈴","🈵","🈹","🈲","🅰️","🅱️","🆎","🆑","🅾️","🆘","❌","⭕","🛑","⛔","📛","🚫","💯","💢","♨️","🚷","🚯","🚳","🚱","🔞","📵","🚭","❗","❕","❓","❔","‼️","⁉️","🔅","🔆","〽️","⚠️","🚸","🔱","⚜️","🔰","♻️","✅","🈯","💹","❇️","✳️","❎","🌐","💠","Ⓜ️","🌀","💤","🏧","🚾","♿","🅿️","🈳","🈂️","🛂","🛃","🛄","🛅"],
+};
+const TAB_ORDER = Object.keys(EMOJI_CATEGORIES);
+const STICKER_EMOJIS = ["😂","❤️","🔥","👍","😍","🎉","😭","🥳","🤔","👏","😎","💯"];
+
+function fileToDataUrl(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
+}
+function resizeImage(file, maxW = 800) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, maxW / img.width);
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          // JPEG has no alpha channel; without a white background fill, transparent
+          // areas (e.g. PNG screenshots) turn solid black when exported as JPEG.
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = () => reject(new Error("image load failed"));
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function processStickerFile(file) {
+  const isAnimated = file.type === "image/gif" || file.type === "image/webp";
+  if (isAnimated) {
+    if (file.size > 900 * 1024) { alert("Animatsion fayl 900KB dan kichik bo'lsin (Firebase bepul tarif)"); return null; }
+    return await fileToDataUrl(file);
+  }
+  return await resizeImage(file, 300);
+}
+function timeStr(ts) {
+  return new Date(ts).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" });
+}
+const MONTH_NAMES = ["yanvar","fevral","mart","aprel","may","iyun","iyul","avgust","sentabr","oktabr","noyabr","dekabr"];
+function dateLabel(ts) {
+  const d = new Date(ts);
+  const today = new Date();
+  const yest = new Date(); yest.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return "Bugun";
+  if (d.toDateString() === yest.toDateString()) return "Kecha";
+  return `${d.getDate()}-${MONTH_NAMES[d.getMonth()]}`;
+}
+
+function setupViewportFix() {
+  const app = document.getElementById("app");
+  const vv = window.visualViewport;
+  const apply = () => {
+    const h = vv ? vv.height : window.innerHeight;
+    app.style.height = Math.min(h, 860) + "px";
+    // iOS Safari can offset the visual viewport (e.g. when the keyboard opens);
+    // keep the app pinned to the top of whatever is actually visible.
+    app.style.transform = vv && vv.offsetTop ? `translateY(${vv.offsetTop}px)` : "";
+    // body is position:fixed, but just in case something tried to scroll it
+    window.scrollTo(0, 0);
+    const area = document.getElementById("msgArea");
+    if (area) area.scrollTop = area.scrollHeight;
+  };
+  if (vv) {
+    vv.addEventListener("resize", apply);
+    vv.addEventListener("scroll", apply);
+  }
+  window.addEventListener("resize", apply);
+  apply();
+}
+
+const ICONS = {
+  send: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>`,
+  back: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#229ED9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>`,
+  image: `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#707579" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>`,
+  smile: `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#707579" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>`,
+  plus: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`,
+  hash: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="M16 3l-2 18"/></svg>`,
+  userplus: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>`,
+  x: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#707579" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
+  msgCircle: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#B9C1CC" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`,
+  check1: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 7 17l-5-5"/></svg>`,
+  check2: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/></svg>`,
+  search: `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#707579" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
+  bookmark: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>`,
+  reply: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>`,
+  forward: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>`,
+  pin: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14l-1.4-1.4A2 2 0 0 1 17 14.2V9a5 5 0 0 0-10 0v5.2a2 2 0 0 1-.6 1.4L5 17Z"/></svg>`,
+  mic: `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#707579" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/></svg>`,
+  moon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>`,
+};
+
+const state = {
+  screen: "loading",
+  profile: null,
+  chats: [],
+  activeChat: null,
+  messages: [],
+  presence: {},
+  typing: {},
+  modal: null,
+  modalError: "",
+  loginError: "",
+  panel: null,
+  panelTab: "Yuzlar",
+  openActionsFor: null,
+  editingId: null,
+  replyTo: null,
+  stickers: [],
+  profileTarget: null,
+  profileEditing: false,
+  returnScreen: "home",
+  pinned: null,
+  searchMode: false,
+  searchQuery: "",
+  hiddenLocal: [],
+  forwardMsgId: null,
+  theme: localGet("chatly-theme") || "light",
+};
+
+function applyTheme() {
+  const app = document.getElementById("app");
+  if (app) app.classList.toggle("dark", state.theme === "dark");
+}
+function toggleTheme() {
+  state.theme = state.theme === "dark" ? "light" : "dark";
+  localSet("chatly-theme", state.theme);
+  applyTheme();
+}
+
+let chatBackGuardPushed = false;
+function pushChatBackGuard() { history.pushState({ chatGuard: true }, ""); chatBackGuardPushed = true; }
+function consumeChatBackGuard() { if (chatBackGuardPushed) { chatBackGuardPushed = false; history.back(); } }
+
+const SAVED_CHAT_ID = () => `saved_${state.profile.key}`;
+function isSavedChat(c) { return !!c && c.saved; }
+
+let presenceIv = null, contactPresenceIv = null;
+let chatMsgListener = null, chatTypingListener = null, chatPinListener = null, homeListener = null, stickerListener = null;
+
+function render() {
+  const app = document.getElementById("app");
+  if (state.screen === "loading") { app.innerHTML = `<div class="login-wrap"><div class="big-logo">💬</div><div class="login-title">Chatly</div><div class="login-sub">Yuklanmoqda...</div></div>`; return; }
+  if (state.screen === "login") return renderLogin(app);
+  if (state.screen === "home") return renderHome(app);
+  if (state.screen === "chat") return renderChat(app);
+  if (state.screen === "profile") return renderProfile(app);
+  if (state.screen === "groupinfo") return renderGroupInfo(app);
+}
+
+function renderLogin(app) {
+  app.innerHTML = `
+    <div class="login-wrap">
+      <div class="big-logo">💬</div>
+      <div class="login-title">Chatly</div>
+      <div class="login-sub">Ismingizni kiriting va suhbatlashishni boshlang</div>
+      <input class="text-input ${state.loginError ? 'error' : ''}" id="nameInput" placeholder="Ismingiz" autofocus />
+      ${state.loginError ? `<div class="field-error">${esc(state.loginError)}</div>` : ""}
+      <button class="primary-btn" id="loginBtn" disabled>Davom etish</button>
+    </div>`;
+  const input = document.getElementById("nameInput");
+  const btn = document.getElementById("loginBtn");
+  input.addEventListener("input", () => btn.disabled = !input.value.trim());
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter" && input.value.trim()) doLogin(input.value); });
+  btn.addEventListener("click", () => doLogin(input.value));
+  input.focus();
+}
+
+async function doLogin(name) {
+  name = name.trim();
+  if (!name) return;
+  const key = safeKey(name);
+  const btn = document.getElementById("loginBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Tekshirilmoqda..."; }
+  const snap = await db.ref(`users/${key}`).get();
+  if (snap.exists()) {
+    state.loginError = "Bu ism band. Boshqa ism tanlang (masalan orqasiga raqam qo'shing).";
+    render();
+    return;
+  }
+  const p = { name, key, id: genUserId(), color: colorFor(name), photo: null };
+  await db.ref(`users/${key}`).set(p);
+  await db.ref(`userIds/${p.id}`).set(key);
+  localSet("chatly-profile", JSON.stringify(p));
+  state.profile = p;
+  state.loginError = "";
+  state.screen = "home";
+  render();
+  await afterLogin();
+}
+
+async function afterLogin() {
+  await ensureSavedChat();
+  await refreshStickers();
+  render();
+  const beat = async () => {
+    await db.ref(`presence/${state.profile.key}`).set({ ts: now(), name: state.profile.name });
+    db.ref(`presence/${state.profile.key}`).onDisconnect().remove();
+  };
+  beat();
+  clearInterval(presenceIv);
+  presenceIv = setInterval(beat, 5000);
+  startHomeListener();
+  startContactPresencePolling();
+}
+
+async function ensureSavedChat() {
+  const id = SAVED_CHAT_ID();
+  const snap = await db.ref(`userChats/${state.profile.key}/${id}`).get();
+  if (!snap.exists()) {
+    await db.ref(`userChats/${state.profile.key}/${id}`).set({
+      id, type: "dm", title: "Saqlangan xabarlar", otherKey: state.profile.key, saved: true, lastTs: now()
+    });
+  }
+}
+
+function refreshStickers() {
+  return new Promise((resolve) => {
+    if (stickerListener) db.ref("stickers").off("value", stickerListener);
+    stickerListener = (snap) => {
+      const val = snap.val() || {};
+      state.stickers = Object.entries(val).map(([id, s]) => ({ id, ...s }));
+      if (state.screen === "chat") renderPanel();
+      resolve();
+    };
+    db.ref("stickers").on("value", stickerListener);
+    setTimeout(resolve, 1500); // fallback in case listener is slow
+  });
+}
+
+function startHomeListener() {
+  if (homeListener) db.ref(`userChats/${state.profile.key}`).off("value", homeListener);
+  homeListener = (snap) => {
+    const val = snap.val() || {};
+    state.chats = Object.values(val).sort((a, b) => (a.saved ? 0 : 1) - (b.saved ? 0 : 1) || (b.lastTs || 0) - (a.lastTs || 0));
+    if (state.screen === "home") render();
+  };
+  db.ref(`userChats/${state.profile.key}`).on("value", homeListener);
+}
+
+function startContactPresencePolling() {
+  clearInterval(contactPresenceIv);
+  const poll = async () => {
+    const names = new Set();
+    state.chats.forEach(c => { if (c.type === "dm") names.add(c.otherKey || safeKey(c.title)); });
+    for (const k of names) {
+      const snap = await db.ref(`presence/${k}`).get();
+      state.presence[k] = snap.exists() ? snap.val().ts : 0;
+    }
+    if (state.screen === "home") render();
+    else if (state.screen === "chat") updateHeaderSub();
+  };
+  poll();
+  contactPresenceIv = setInterval(poll, 4000);
+}
+
+function isOnlineKey(key) {
+  return state.presence[key] && now() - state.presence[key] < 15000;
+}
+
+function avatarStyle(bg, photo) {
+  return photo ? `background-image:url('${photo}'); background-color:${bg};` : `background:${bg};`;
+}
+
+function renderHome(app) {
+  const chatsHtml = state.chats.length === 0
+    ? `<div class="empty-state">${ICONS.msgCircle}<div style="margin-top:10px;">Hali suhbatlar yo'q. Pastdagi tugma orqali boshlang.</div></div>`
+    : state.chats.map(c => {
+        const online = c.type === "dm" && isOnlineKey(c.otherKey);
+        const avatarBg = c.saved ? "#229ED9" : (c.type === "group" ? "#40916C" : colorFor(c.title));
+        const avatarContent = c.saved ? ICONS.bookmark : (c.type === "group" ? ICONS.hash : initials(c.title));
+        return `
+        <div class="list-item" data-id="${esc(c.id)}">
+          <div style="position:relative;">
+            <div class="avatar" style="${avatarStyle(avatarBg, null)}">${avatarContent}</div>
+            ${online ? '<div class="online-dot"></div>' : ''}
+          </div>
+          <div style="flex:1; margin-left:12px;">
+            <div class="list-title">${esc(c.title)}</div>
+            <div class="list-sub">${c.saved ? "Shaxsiy eslatmalar" : (c.type === "group" ? `Guruh · kod: ${esc(c.code)}` : (online ? "onlayn" : "oxirgi marta ko'rilgan"))}</div>
+          </div>
+        </div>`;
+      }).join("");
+
+  app.innerHTML = `
+    <div class="header">
+      <div class="header-title">Chatly</div>
+      <div class="icon-btn" id="searchIdBtn" style="margin-right:4px;">${ICONS.search}</div>
+      <div class="avatar sm" id="myAvatarBtn" style="${avatarStyle(state.profile.color, state.profile.photo)}; cursor:pointer;">${state.profile.photo ? '' : initials(state.profile.name)}</div>
+    </div>
+    <div class="list">${chatsHtml}</div>
+    <div class="fab-row">
+      <button class="fab" id="btnDm">${ICONS.userplus} Shaxsiy</button>
+      <button class="fab" id="btnJoin">${ICONS.hash} Qo'shilish</button>
+      <button class="fab primary" id="btnGroup">${ICONS.plus} Guruh</button>
+    </div>
+    <div id="modalRoot"></div>
+  `;
+
+  document.getElementById("myAvatarBtn").addEventListener("click", () => openProfile({ type: "me" }, "home"));
+  document.getElementById("searchIdBtn").addEventListener("click", () => openModal("search"));
+  app.querySelectorAll(".list-item").forEach(el => {
+    el.addEventListener("click", () => {
+      const chat = state.chats.find(c => c.id === el.dataset.id);
+      openChat(chat);
+    });
+  });
+  document.getElementById("btnDm").addEventListener("click", () => openModal("dm"));
+  document.getElementById("btnJoin").addEventListener("click", () => openModal("join"));
+  document.getElementById("btnGroup").addEventListener("click", () => openModal("group"));
+
+  if (state.modal) renderModal();
+}
+
+function openModal(type) {
+  state.modal = type;
+  state.modalError = "";
+  renderModal();
+}
+
+function renderModal() {
+  const root = document.getElementById("modalRoot");
+  if (!root) return;
+  if (!state.modal) { root.innerHTML = ""; return; }
+
+  if (state.modal === "forward") {
+    const listHtml = state.chats.map(c => `
+      <div class="list-item" data-fwd-target="${esc(c.id)}">
+        <div class="avatar sm" style="${avatarStyle(c.type === "group" ? "#40916C" : colorFor(c.title), null)}">${c.type === "group" ? ICONS.hash : initials(c.title)}</div>
+        <div style="flex:1; margin-left:12px;"><div class="list-title">${esc(c.title)}</div></div>
+      </div>`).join("");
+    root.innerHTML = `
+      <div class="modal-bg" id="modalBg">
+        <div class="modal-card" id="modalCard">
+          <div class="modal-head">
+            <div class="modal-title">Qayerga uzatish?</div>
+            <div id="modalClose" style="cursor:pointer;">${ICONS.x}</div>
+          </div>
+          <div class="forward-list">${listHtml || "<div style='color:#8A929B; font-size:14px;'>Suhbatlar yo'q</div>"}</div>
+        </div>
+      </div>`;
+    document.getElementById("modalBg").addEventListener("click", () => { state.modal = null; renderModal(); });
+    document.getElementById("modalCard").addEventListener("click", (e) => e.stopPropagation());
+    document.getElementById("modalClose").addEventListener("click", () => { state.modal = null; renderModal(); });
+    root.querySelectorAll("[data-fwd-target]").forEach(el => {
+      el.addEventListener("click", () => forwardMessageTo(el.dataset.fwdTarget));
+    });
+    return;
+  }
+
+  const titleMap = { group: "Yangi guruh yaratish", join: "Guruhga qo'shilish", dm: "Shaxsiy chat boshlash", search: "ID orqali qidirish" };
+  const placeholderMap = { group: "Guruh nomi", join: "Guruh kodi", dm: "Do'stingiz ismi", search: "Foydalanuvchi ID (masalan 5123456789)" };
+  const btnMap = { group: "Yaratish", join: "Qo'shilish", dm: "Boshlash", search: "Qidirish" };
+  root.innerHTML = `
+    <div class="modal-bg" id="modalBg">
+      <div class="modal-card" id="modalCard">
+        <div class="modal-head">
+          <div class="modal-title">${titleMap[state.modal]}</div>
+          <div id="modalClose" style="cursor:pointer;">${ICONS.x}</div>
+        </div>
+        <input class="text-input" id="modalInput" placeholder="${placeholderMap[state.modal]}" autofocus />
+        ${state.modalError ? `<div class="modal-error">${esc(state.modalError)}</div>` : ""}
+        <button class="primary-btn" id="modalBtn" disabled>${btnMap[state.modal]}</button>
+      </div>
+    </div>`;
+  const bg = document.getElementById("modalBg");
+  const card = document.getElementById("modalCard");
+  const input = document.getElementById("modalInput");
+  const btn = document.getElementById("modalBtn");
+  bg.addEventListener("click", () => { state.modal = null; renderModal(); });
+  card.addEventListener("click", (e) => e.stopPropagation());
+  document.getElementById("modalClose").addEventListener("click", () => { state.modal = null; renderModal(); });
+  input.addEventListener("input", () => btn.disabled = !input.value.trim());
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter" && input.value.trim()) submitModal(input.value); });
+  btn.addEventListener("click", () => submitModal(input.value));
+  input.focus();
+}
+
+function openForwardPicker(msgId) {
+  state.forwardMsgId = msgId;
+  state.openActionsFor = null;
+  state.modal = "forward";
+  state.modalError = "";
+  renderModal();
+  renderMessages();
+}
+
+async function forwardMessageTo(targetChatId) {
+  const msg = state.messages.find(m => m.id === state.forwardMsgId);
+  if (!msg) return;
+  const target = state.chats.find(c => c.id === targetChatId);
+  if (!target) return;
+  const payload = { forwardedFrom: msg.sender };
+  if (msg.type === "text") { payload.type = "text"; payload.text = msg.text; }
+  else if (msg.type === "image") { payload.type = "image"; payload.image = msg.image; }
+  else if (msg.type === "sticker") { payload.type = "sticker"; payload.image = msg.image; }
+  else if (msg.type === "sticker-emoji") { payload.type = "sticker-emoji"; payload.emoji = msg.emoji; }
+  else if (msg.type === "voice") { payload.type = "voice"; payload.audio = msg.audio; payload.duration = msg.duration; }
+  else return;
+  await sendMessage(payload, target);
+  state.modal = null;
+  renderModal();
+}
+
+async function submitModal(value) {
+  const type = state.modal;
+  value = value.trim();
+  if (!value) return;
+  if (type === "group") await createGroup(value);
+  else if (type === "join") await joinGroup(value);
+  else if (type === "dm") await startDm(value);
+  else if (type === "search") await searchById(value);
+}
+
+async function searchById(idRaw) {
+  const id = idRaw.trim();
+  const snap = await db.ref(`userIds/${id}`).get();
+  if (!snap.exists()) { state.modalError = "Bunday ID'li foydalanuvchi topilmadi"; renderModal(); return; }
+  const key = snap.val();
+  if (key === state.profile.key) { state.modalError = "Bu — sizning ID'ingiz"; renderModal(); return; }
+  const userSnap = await db.ref(`users/${key}`).get();
+  const name = userSnap.exists() ? userSnap.val().name : key;
+  state.modal = null;
+  await startDm(name);
+}
+
+async function createGroup(title) {
+  const code = genCode();
+  const gid = `group_${code}`;
+  await db.ref(`groups/${code}`).set({ code, title, members: { [state.profile.key]: true }, admins: { [state.profile.key]: true }, owner: state.profile.key, createdBy: state.profile.key });
+  const entry = { id: gid, type: "group", title, code, lastTs: now() };
+  await db.ref(`userChats/${state.profile.key}/${gid}`).set(entry);
+  state.modal = null;
+  openChat(entry);
+}
+
+async function joinGroup(codeRaw) {
+  const code = codeRaw.trim().toUpperCase();
+  const snap = await db.ref(`groups/${code}`).get();
+  if (!snap.exists()) { state.modalError = "Bunday kod topilmadi"; renderModal(); return; }
+  const g = snap.val();
+  await db.ref(`groups/${code}/members/${state.profile.key}`).set(true);
+  const gid = `group_${code}`;
+  const entry = { id: gid, type: "group", title: g.title, code, lastTs: now() };
+  await db.ref(`userChats/${state.profile.key}/${gid}`).set(entry);
+  state.modal = null;
+  openChat(entry);
+}
+
+async function startDm(friendName) {
+  friendName = friendName.trim();
+  if (!friendName) return;
+  const friendKey = safeKey(friendName);
+  if (friendKey === state.profile.key) { state.modalError = "Bu — sizning ismingiz"; renderModal(); return; }
+  const friendSnap = await db.ref(`users/${friendKey}`).get();
+  if (!friendSnap.exists()) {
+    state.modalError = "Bu odam hali ilovaga kirmagan. Havolani yuboring, u ismini aynan shunday kiritib kirsin.";
+    renderModal();
+    return;
+  }
+  const friendProfile = friendSnap.val();
+  const id = dmId(state.profile.key, friendKey);
+  const updates = {};
+  updates[`userChats/${state.profile.key}/${id}`] = { id, type: "dm", title: friendProfile.name, otherKey: friendKey, lastTs: now() };
+  updates[`userChats/${friendKey}/${id}`] = { id, type: "dm", title: state.profile.name, otherKey: state.profile.key, lastTs: now() };
+  await db.ref().update(updates);
+  state.modal = null;
+  openChat({ id, type: "dm", title: friendProfile.name, otherKey: friendKey });
+}
+
+// ---------------- PROFILE SCREEN ----------------
+
+async function openProfile(target, from) {
+  state.returnScreen = from;
+  state.profileEditing = false;
+  if (target.type === "me") {
+    state.profileTarget = { type: "me", ...state.profile };
+  } else {
+    const snap = await db.ref(`users/${target.key}`).get();
+    const p = snap.exists() ? snap.val() : { name: target.name, key: target.key, id: "—", color: colorFor(target.name), photo: null };
+    state.profileTarget = { type: "contact", ...p };
+  }
+  state.screen = "profile";
+  render();
+}
+
+function renderProfile(app) {
+  const p = state.profileTarget;
+  const isMe = p.type === "me";
+  app.innerHTML = `
+    <div class="header">
+      <div class="back-btn" id="profBack">${ICONS.back}</div>
+      <div class="header-title" style="text-align:center; margin-right:22px;">${isMe ? "Mening profilim" : "Profil"}</div>
+    </div>
+    <div class="profile-wrap" id="profBody"></div>
+  `;
+  document.getElementById("profBack").addEventListener("click", () => {
+    state.screen = state.returnScreen;
+    render();
+    if (state.returnScreen === "home") { startHomeListener(); }
+    if (state.returnScreen === "chat") { renderMessages(); updateHeaderSub(); pushChatBackGuard(); }
+  });
+  renderProfileBody();
+}
+
+function renderProfileBody() {
+  const body = document.getElementById("profBody");
+  const p = state.profileTarget;
+  const isMe = p.type === "me";
+
+  if (isMe && state.profileEditing) {
+    body.innerHTML = `
+      <div class="avatar lg" id="editAvatar" style="${avatarStyle(p.color, p.photo)}; cursor:pointer;">${p.photo ? '' : initials(p.name)}</div>
+      <input type="file" accept="image/*" id="avatarFile" class="hidden" />
+      <div style="font-size:12.5px; color:#229ED9; margin-top:8px; cursor:pointer;" id="changePhotoTxt">Rasmni o'zgartirish</div>
+      <input class="text-input" id="editNameInput" placeholder="Ism" value="${esc(p.name)}" style="margin-top:18px;" />
+      <div style="font-size:11.5px; color:#B0B6BC; margin-top:-8px; text-align:center;">Ismingizni istalgan vaqtda o'zgartirishingiz mumkin. Faqat ID (${esc(p.id)}) va do'stlaringiz sizni topadigan asosiy ism o'zgarmaydi.</div>
+      <div style="width:100%; margin-top:16px;">
+        <button class="primary-btn" id="saveProfileBtn">Saqlash</button>
+        <button class="secondary-btn" id="cancelEditBtn">Bekor qilish</button>
+      </div>
+    `;
+    document.getElementById("changePhotoTxt").addEventListener("click", () => document.getElementById("avatarFile").click());
+    document.getElementById("editAvatar").addEventListener("click", () => document.getElementById("avatarFile").click());
+    document.getElementById("avatarFile").addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const dataUrl = await resizeImage(file, 300);
+      state.profileTarget.photo = dataUrl;
+      renderProfileBody();
+    });
+    const nameInput = document.getElementById("editNameInput");
+    const saveBtn = document.getElementById("saveProfileBtn");
+    nameInput.addEventListener("input", () => { saveBtn.disabled = !nameInput.value.trim(); });
+    document.getElementById("saveProfileBtn").addEventListener("click", () => saveProfile(nameInput.value));
+    document.getElementById("cancelEditBtn").addEventListener("click", () => {
+      state.profileEditing = false;
+      state.profileTarget = { type: "me", ...state.profile };
+      renderProfileBody();
+    });
+    return;
+  }
+
+  body.innerHTML = `
+    <div class="avatar lg" style="${avatarStyle(p.color, p.photo)}">${p.photo ? '' : initials(p.name)}</div>
+    <div class="profile-name">${esc(p.name)}</div>
+    <div class="profile-sub">${isMe ? "Bu — sizning profilingiz" : (isOnlineKey(p.key) ? "onlayn" : "oxirgi marta ko'rilgan")}</div>
+    <div class="profile-field">
+      <div class="profile-field-label">ID</div>
+      <div class="profile-field-value">${esc(p.id)}</div>
+    </div>
+    <div class="profile-field">
+      <div class="profile-field-label">Ism</div>
+      <div class="profile-field-value">${esc(p.name)}</div>
+    </div>
+    ${isMe ? `<button class="primary-btn" id="editProfileBtn" style="margin-top:22px;">Profilni tahrirlash</button>` : ""}
+    ${isMe ? `
+    <div class="theme-row" style="margin-top:22px;">
+      <span style="font-size:15px; color:#1F2733; display:flex; align-items:center; gap:8px;">${ICONS.moon} Tungi rejim</span>
+      <div class="switch ${state.theme === 'dark' ? 'on' : ''}" id="themeSwitch"><div class="knob"></div></div>
+    </div>` : ""}
+  `;
+  if (isMe) {
+    document.getElementById("editProfileBtn").addEventListener("click", () => {
+      state.profileEditing = true;
+      renderProfileBody();
+    });
+    document.getElementById("themeSwitch").addEventListener("click", () => {
+      toggleTheme();
+      renderProfileBody();
+    });
+  }
+}
+
+async function saveProfile(newName) {
+  const name = (newName || "").trim() || state.profile.name;
+  const updated = { ...state.profile, photo: state.profileTarget.photo, name };
+  state.profile = updated;
+  localSet("chatly-profile", JSON.stringify(updated));
+  await db.ref(`users/${updated.key}`).update({ photo: updated.photo, name: updated.name });
+  state.profileEditing = false;
+  state.profileTarget = { type: "me", ...updated };
+  renderProfileBody();
+}
+
+// ---------------- GROUP INFO SCREEN ----------------
+
+async function openGroupInfo(chat, from) {
+  state.returnScreen = from;
+  const snap = await db.ref(`groups/${chat.code}`).get();
+  const g = snap.exists() ? snap.val() : { title: chat.title, code: chat.code, members: {} };
+  const memberKeys = Object.keys(g.members || {});
+  const members = [];
+  for (const k of memberKeys) {
+    const usnap = await db.ref(`users/${k}`).get();
+    members.push(usnap.exists() ? usnap.val() : { name: k, key: k, color: colorFor(k) });
+  }
+  state.groupTarget = { title: g.title, code: g.code, members, owner: g.owner, admins: g.admins || {}, photo: g.photo || null };
+  state.screen = "groupinfo";
+  render();
+}
+
+function isGroupAdmin(g) {
+  return g.owner === state.profile.key || (g.admins && g.admins[state.profile.key]);
+}
+
+function renderGroupInfo(app) {
+  const g = state.groupTarget;
+  const canManage = isGroupAdmin(g);
+  const membersHtml = g.members.map(m => `
+    <div class="list-item" style="cursor:default;">
+      <div class="avatar sm" style="${avatarStyle(m.color || colorFor(m.name), m.photo)}">${m.photo ? '' : initials(m.name)}</div>
+      <div style="flex:1; margin-left:12px;">
+        <div class="list-title">${esc(m.name)}${m.key === g.owner ? ' <span style="font-size:11px; color:#8A929B;">· egasi</span>' : (g.admins && g.admins[m.key] ? ' <span style="font-size:11px; color:#8A929B;">· admin</span>' : '')}</div>
+      </div>
+      ${(canManage && m.key !== g.owner && m.key !== state.profile.key) ? `<button class="action-btn danger" data-remove-member="${esc(m.key)}">Chiqarish</button>` : ""}
+    </div>`).join("");
+  app.innerHTML = `
+    <div class="header">
+      <div class="back-btn" id="giBack">${ICONS.back}</div>
+      <div class="header-title" style="text-align:center; margin-right:22px;">Guruh haqida</div>
+    </div>
+    <div class="profile-wrap" style="padding-top:24px;">
+      <div class="avatar lg" id="groupAvatarBig" style="${g.photo ? avatarStyle('#40916C', g.photo) : 'background:#40916C;'}; cursor:${canManage ? 'pointer' : 'default'};">${g.photo ? '' : ICONS.hash}</div>
+      ${canManage ? `<input type="file" accept="image/*" id="groupPhotoInput" class="hidden" /><div style="font-size:12.5px; color:#229ED9; margin-top:8px; cursor:pointer;" id="changeGroupPhotoTxt">Guruh rasmini o'zgartirish</div>` : ""}
+      <div class="profile-name">${esc(g.title)}</div>
+      <div class="profile-sub">${g.members.length} a'zo</div>
+      <div class="profile-field">
+        <div class="profile-field-label">Qo'shilish kodi</div>
+        <div class="profile-field-value">${esc(g.code)}</div>
+      </div>
+      <div style="width:100%; margin-top:18px;">
+        <div class="profile-field-label" style="margin-bottom:8px;">A'zolar</div>
+        ${membersHtml}
+      </div>
+    </div>
+  `;
+  document.getElementById("giBack").addEventListener("click", () => {
+    state.screen = state.returnScreen;
+    render();
+    if (state.returnScreen === "home") { startHomeListener(); }
+    if (state.returnScreen === "chat") { renderMessages(); updateHeaderSub(); pushChatBackGuard(); }
+  });
+  if (canManage) {
+    const photoInput = document.getElementById("groupPhotoInput");
+    document.getElementById("changeGroupPhotoTxt").addEventListener("click", () => photoInput.click());
+    document.getElementById("groupAvatarBig").addEventListener("click", () => photoInput.click());
+    photoInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const dataUrl = await resizeImage(file, 300);
+      await db.ref(`groups/${g.code}`).update({ photo: dataUrl });
+      state.groupTarget.photo = dataUrl;
+      renderGroupInfo(app);
+    });
+  }
+  app.querySelectorAll("[data-remove-member]").forEach(el => {
+    el.addEventListener("click", async () => {
+      const key = el.dataset.removeMember;
+      if (!confirm("Bu a'zoni guruhdan chiqarasizmi?")) return;
+      await db.ref(`groups/${g.code}/members/${key}`).remove();
+      await db.ref(`groups/${g.code}/admins/${key}`).remove();
+      await db.ref(`userChats/${key}/group_${g.code}`).remove();
+      state.groupTarget.members = state.groupTarget.members.filter(m => m.key !== key);
+      renderGroupInfo(app);
+    });
+  });
+}
+
+// ---------------- CHAT SCREEN ----------------
+
+function openChat(entry) {
+  state.activeChat = entry;
+  state.screen = "chat";
+  state.panel = null;
+  state.openActionsFor = null;
+  state.editingId = null;
+  state.replyTo = null;
+  state.searchMode = false;
+  state.searchQuery = "";
+  state.pinned = null;
+  state.hiddenLocal = JSON.parse(localGet(`chatly-hidden-${entry.id}`) || "[]");
+  render();
+  startChatListeners();
+  pushChatBackGuard();
+}
+
+function leaveChat() {
+  consumeChatBackGuard();
+  stopChatListeners();
+  state.screen = "home";
+  state.activeChat = null;
+  render();
+  startHomeListener();
+}
+
+function startChatListeners() {
+  const chatId = state.activeChat.id;
+  if (chatMsgListener) chatMsgListener.off();
+  const msgRef = db.ref(`messages/${chatId}`);
+  const handler = (snap) => {
+    const val = snap.val() || {};
+    const list = Object.entries(val).map(([id, m]) => ({ id, ...m })).sort((a,b) => a.ts - b.ts);
+    state.messages = list;
+    markSeen(chatId, list);
+    if (state.screen === "chat") renderMessages();
+  };
+  msgRef.on("value", handler);
+  chatMsgListener = { off: () => msgRef.off("value", handler) };
+
+  if (chatTypingListener) chatTypingListener.off();
+  const typingRef = db.ref(`typing/${chatId}`);
+  const typingHandler = (snap) => {
+    state.typing = snap.val() || {};
+    if (state.screen === "chat") updateHeaderSub();
+  };
+  typingRef.on("value", typingHandler);
+  chatTypingListener = { off: () => typingRef.off("value", typingHandler) };
+
+  if (chatPinListener) chatPinListener.off();
+  const pinRef = db.ref(`chatMeta/${chatId}/pinned`);
+  const pinHandler = (snap) => {
+    state.pinned = snap.exists() ? snap.val() : null;
+    if (state.screen === "chat") renderPinnedBar();
+  };
+  pinRef.on("value", pinHandler);
+  chatPinListener = { off: () => pinRef.off("value", pinHandler) };
+}
+
+function stopChatListeners() {
+  if (chatMsgListener) { chatMsgListener.off(); chatMsgListener = null; }
+  if (chatTypingListener) { chatTypingListener.off(); chatTypingListener = null; }
+  if (chatPinListener) { chatPinListener.off(); chatPinListener = null; }
+}
+
+async function markSeen(chatId, list) {
+  const updates = {};
+  list.forEach(m => {
+    if (m.senderKey !== state.profile.key && !m.deleted && !(m.seenBy && m.seenBy[state.profile.key])) {
+      updates[`messages/${chatId}/${m.id}/seenBy/${state.profile.key}`] = now();
+    }
+  });
+  if (Object.keys(updates).length) await db.ref().update(updates);
+}
+
+function updateHeaderSub() {
+  const subEl = document.getElementById("chatSub");
+  if (!subEl) return;
+  const c = state.activeChat;
+  const others = Object.values(state.typing).filter(v => v && v.key !== state.profile.key && now() - v.ts < 3000);
+  if (others.length > 0) {
+    subEl.textContent = c.type === "group" ? `${others.map(o => o.name).join(", ")} yozmoqda...` : "yozmoqda...";
+    subEl.style.color = "#229ED9";
+    return;
+  }
+  subEl.style.color = "#707579";
+  subEl.textContent = c.type === "group" ? `kod: ${c.code}` : (isOnlineKey(c.otherKey) ? "onlayn" : "oflayn");
+}
+
+async function notifyTyping() {
+  const c = state.activeChat;
+  await db.ref(`typing/${c.id}/${state.profile.key}`).set({ ts: now(), key: state.profile.key, name: state.profile.name });
+}
+
+function renderChat(app) {
+  const c = state.activeChat;
+  const avatarBg = c.saved ? "#229ED9" : (c.type === "group" ? "#40916C" : colorFor(c.title));
+  const avatarContent = c.saved ? ICONS.bookmark : (c.type === "group" ? ICONS.hash : initials(c.title));
+  const sub = c.saved ? "Shaxsiy eslatmalar" : (c.type === "group" ? `kod: ${esc(c.code)}` : (isOnlineKey(c.otherKey) ? "onlayn" : "oflayn"));
+  app.innerHTML = `
+    <div class="header">
+      <div class="back-btn" id="backBtn">${ICONS.back}</div>
+      <div class="header-clickable" id="chatHeaderInfo">
+        <div class="avatar sm" style="${avatarStyle(avatarBg, null)}">${avatarContent}</div>
+        <div style="flex:1;">
+          <div style="font-weight:600; font-size:15px; color:#1F2733;">${esc(c.title)}</div>
+          <div style="font-size:12px; color:#707579;" id="chatSub">${sub}</div>
+        </div>
+      </div>
+      ${!c.saved ? `<div class="icon-btn" id="searchBtn">${ICONS.search}</div>` : ""}
+    </div>
+    <div id="pinnedBarRoot"></div>
+    <div id="searchBarRoot"></div>
+    <div class="msg-area" id="msgArea"></div>
+    <div id="replyBar"></div>
+    <div id="editingBar"></div>
+    <div class="input-bar" id="inputBar">
+      <input type="file" accept="image/*" id="fileInput" class="hidden" />
+      <input type="file" accept="image/*,image/gif,image/webp" id="stickerFileInput" class="hidden" />
+      <div class="icon-btn" id="imgBtn">${ICONS.image}</div>
+      <div class="icon-btn" id="emojiBtn">${ICONS.smile}</div>
+      <input class="msg-input" id="msgInput" placeholder="Xabar yozing..." />
+      <div class="icon-btn mic-btn" id="micBtn">${ICONS.mic}</div>
+      <button class="send-btn" id="sendBtn" disabled>${ICONS.send}</button>
+      <div id="panelRoot"></div>
+    </div>
+    <div id="modalRoot"></div>
+  `;
+  document.getElementById("backBtn").addEventListener("click", leaveChat);
+  if (c.saved) {
+    document.getElementById("chatHeaderInfo").addEventListener("click", () => {
+      consumeChatBackGuard();
+      openProfile({ type: "me" }, "chat");
+    });
+  } else if (c.type === "dm") {
+    document.getElementById("chatHeaderInfo").addEventListener("click", () => {
+      consumeChatBackGuard();
+      openProfile({ type: "contact", key: c.otherKey, name: c.title }, "chat");
+    });
+  } else {
+    document.getElementById("chatHeaderInfo").addEventListener("click", () => {
+      consumeChatBackGuard();
+      openGroupInfo(c, "chat");
+    });
+  }
+  const fileInput = document.getElementById("fileInput");
+  document.getElementById("imgBtn").addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await resizeImage(file);
+      await sendMessage({ type: "image", image: dataUrl, ...buildReplyPayload() });
+      cancelReply();
+    } catch (err) {
+      alert("Rasmni yuklab bo'lmadi. Boshqa rasm bilan urinib ko'ring.");
+    }
+    e.target.value = "";
+  });
+
+  const stickerFileInput = document.getElementById("stickerFileInput");
+  stickerFileInput.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const dataUrl = await processStickerFile(file);
+    if (!dataUrl) return;
+    await db.ref("stickers").push({ image: dataUrl, addedBy: state.profile.name, ts: now() });
+    e.target.value = "";
+  });
+
+  document.getElementById("emojiBtn").addEventListener("click", () => {
+    if (state.panel) {
+      state.panel = null;
+      renderPanel();
+    } else {
+      msgInput.blur(); // close the OS keyboard first so it doesn't fight with the panel
+      state.panel = "emoji";
+      renderPanel();
+    }
+  });
+
+  const msgInput = document.getElementById("msgInput");
+  const sendBtn = document.getElementById("sendBtn");
+  msgInput.addEventListener("input", () => {
+    sendBtn.disabled = !msgInput.value.trim();
+    notifyTyping();
+  });
+  msgInput.addEventListener("keydown", (e) => { if (e.key === "Enter" && msgInput.value.trim()) doSend(); });
+  msgInput.addEventListener("focus", () => { state.panel = null; renderPanel(); });
+  msgInput.addEventListener("click", () => { lastCursorPos = msgInput.selectionStart; });
+  msgInput.addEventListener("keyup", () => { lastCursorPos = msgInput.selectionStart; });
+  sendBtn.addEventListener("click", doSend);
+
+  function doSend() {
+    const t = msgInput.value.trim();
+    if (!t) return;
+    msgInput.value = "";
+    sendBtn.disabled = true;
+    if (state.editingId) {
+      saveEdit(state.editingId, t);
+    } else {
+      sendMessage({ type: "text", text: t, ...buildReplyPayload() });
+      cancelReply();
+    }
+  }
+
+  if (!c.saved) {
+    document.getElementById("searchBtn").addEventListener("click", () => {
+      state.searchMode = !state.searchMode;
+      state.searchQuery = "";
+      renderSearchBar();
+      renderMessages();
+    });
+  }
+
+  const micBtn = document.getElementById("micBtn");
+  const startRec = (e) => { e.preventDefault(); startRecording(micBtn); };
+  const stopRec = (e) => { e.preventDefault(); stopRecording(); };
+  micBtn.addEventListener("mousedown", startRec);
+  micBtn.addEventListener("touchstart", startRec, { passive: false });
+  micBtn.addEventListener("mouseup", stopRec);
+  micBtn.addEventListener("mouseleave", stopRec);
+  micBtn.addEventListener("touchend", stopRec);
+
+  renderEditingBar();
+  renderReplyBar();
+  renderPinnedBar();
+  renderSearchBar();
+  renderMessages();
+  renderPanel();
+}
+
+// ---------------- SEARCH IN CHAT ----------------
+
+function renderSearchBar() {
+  const root = document.getElementById("searchBarRoot");
+  if (!root) return;
+  if (!state.searchMode) { root.innerHTML = ""; return; }
+  root.innerHTML = `
+    <div class="search-bar">
+      ${ICONS.search}
+      <input id="searchInput" placeholder="Chatdan qidirish..." value="${esc(state.searchQuery)}" />
+      <div class="icon-btn" id="searchCloseBtn">${ICONS.x}</div>
+    </div>`;
+  const input = document.getElementById("searchInput");
+  input.addEventListener("input", () => { state.searchQuery = input.value; renderMessages(); });
+  document.getElementById("searchCloseBtn").addEventListener("click", () => {
+    state.searchMode = false; state.searchQuery = "";
+    renderSearchBar(); renderMessages();
+  });
+  input.focus();
+}
+
+// ---------------- PIN ----------------
+
+function renderPinnedBar() {
+  const root = document.getElementById("pinnedBarRoot");
+  if (!root) return;
+  if (!state.pinned) { root.innerHTML = ""; return; }
+  root.innerHTML = `
+    <div class="pinned-bar" id="pinnedBarEl">
+      ${ICONS.pin}
+      <div class="txt"><b>${esc(state.pinned.sender)}</b>: ${esc(state.pinned.preview)}</div>
+      <div class="icon-btn" id="unpinBtn">${ICONS.x}</div>
+    </div>`;
+  document.getElementById("pinnedBarEl").addEventListener("click", (e) => {
+    if (e.target.closest("#unpinBtn")) return;
+    const el = document.querySelector(`[data-msg="${state.pinned.id}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  document.getElementById("unpinBtn").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    await db.ref(`chatMeta/${state.activeChat.id}/pinned`).remove();
+  });
+}
+
+async function pinMessage(id) {
+  const msg = state.messages.find(m => m.id === id);
+  if (!msg) return;
+  const preview = msg.type === "text" ? msg.text : (msg.type === "image" ? "📷 Rasm" : msg.type === "voice" ? "🎤 Ovozli xabar" : "🖼️ Stiker");
+  await db.ref(`chatMeta/${state.activeChat.id}/pinned`).set({ id: msg.id, sender: msg.sender, preview });
+  state.openActionsFor = null;
+  renderMessages();
+}
+
+// ---------------- VOICE MESSAGES ----------------
+
+let mediaRecorder = null, audioChunks = [], recordingStartTs = 0;
+
+async function startRecording(btnEl) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+    mediaRecorder.start();
+    recordingStartTs = now();
+    btnEl.classList.add("recording");
+  } catch (err) {
+    alert("Mikrofonga ruxsat berilmadi. Brauzer sozlamalaridan ruxsat bering.");
+  }
+}
+
+function stopRecording() {
+  const micBtn = document.getElementById("micBtn");
+  if (micBtn) micBtn.classList.remove("recording");
+  if (!mediaRecorder || mediaRecorder.state === "inactive") return;
+  const duration = Math.round((now() - recordingStartTs) / 1000);
+  mediaRecorder.stop();
+  mediaRecorder.onstop = async () => {
+    mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    if (duration < 1) return;
+    const blob = new Blob(audioChunks, { type: "audio/webm" });
+    if (blob.size > 900 * 1024) { alert("Ovozli xabar juda uzun (bepul tarif chegarasi ~900KB)"); return; }
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      await sendMessage({ type: "voice", audio: e.target.result, duration, ...buildReplyPayload() });
+      cancelReply();
+    };
+    reader.readAsDataURL(blob);
+  };
+}
+
+function buildReplyPayload() {
+  if (!state.replyTo) return {};
+  return { replyTo: { id: state.replyTo.id, sender: state.replyTo.sender, preview: state.replyTo.preview } };
+}
+
+function cancelReply() {
+  state.replyTo = null;
+  renderReplyBar();
+}
+
+function startReply(id) {
+  const msg = state.messages.find(m => m.id === id);
+  if (!msg || msg.deleted) return;
+  const preview = msg.type === "text" ? msg.text : (msg.type === "image" ? "📷 Rasm" : "🖼️ Stiker");
+  state.replyTo = { id: msg.id, sender: msg.sender, preview };
+  state.editingId = null;
+  state.openActionsFor = null;
+  renderEditingBar();
+  renderReplyBar();
+  renderMessages();
+  const input = document.getElementById("msgInput");
+  if (input) input.focus();
+}
+
+function renderReplyBar() {
+  const bar = document.getElementById("replyBar");
+  if (!bar) return;
+  if (!state.replyTo) { bar.innerHTML = ""; return; }
+  bar.innerHTML = `
+    <div class="editing-bar">
+      <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">↩️ <b>${esc(state.replyTo.sender)}</b>: ${esc(state.replyTo.preview)}</span>
+      <span id="cancelReply" style="cursor:pointer; font-weight:700; flex-shrink:0; margin-left:8px;">${ICONS.x}</span>
+    </div>`;
+  document.getElementById("cancelReply").addEventListener("click", cancelReply);
+}
+
+function renderEditingBar() {
+  const bar = document.getElementById("editingBar");
+  if (!bar) return;
+  if (!state.editingId) { bar.innerHTML = ""; return; }
+  bar.innerHTML = `
+    <div class="editing-bar">
+      <span style="flex:1;">✏️ Xabarni tahrirlash</span>
+      <span id="cancelEdit" style="cursor:pointer; font-weight:700;">Bekor qilish</span>
+    </div>`;
+  document.getElementById("cancelEdit").addEventListener("click", () => {
+    state.editingId = null;
+    document.getElementById("msgInput").value = "";
+    document.getElementById("sendBtn").disabled = true;
+    renderEditingBar();
+  });
+}
+
+function renderPanel() {
+  const root = document.getElementById("panelRoot");
+  if (!root) return;
+  if (!state.panel) { root.innerHTML = ""; return; }
+
+  const tabsHtml = [`<div class="panel-tab ${state.panelTab === '__stickers__' ? 'active' : ''}" data-tab="__stickers__">🖼️ Stikerlar</div>`]
+    .concat(TAB_ORDER.map(cat => `<div class="panel-tab ${state.panelTab === cat ? 'active' : ''}" data-tab="${cat}">${cat}</div>`))
+    .join("");
+
+  let gridHtml;
+  if (state.panelTab === "__stickers__") {
+    gridHtml = STICKER_EMOJIS.map(e => `<div class="emoji-cell" data-sticker-emoji="${e}" style="font-size:32px;">${e}</div>`).join("") +
+      state.stickers.map((s) => `<img class="sticker-cell" data-sticker-img="${s.id}" src="${s.image}" />`).join("") +
+      `<div class="sticker-add" id="addStickerBtn">${ICONS.plus}</div>`;
+  } else {
+    gridHtml = (EMOJI_CATEGORIES[state.panelTab] || []).map(e => `<div class="emoji-cell" data-emoji="${e}">${e}</div>`).join("");
+  }
+
+  root.innerHTML = `
+    <div class="panel">
+      <div class="panel-tabs">${tabsHtml}</div>
+      <div class="panel-grid">${gridHtml}</div>
+    </div>`;
+
+  root.querySelectorAll("[data-tab]").forEach(el => {
+    el.addEventListener("click", () => { state.panelTab = el.dataset.tab; renderPanel(); });
+  });
+
+  if (state.panelTab === "__stickers__") {
+    root.querySelectorAll("[data-sticker-emoji]").forEach(el => {
+      el.addEventListener("click", () => { sendMessage({ type: "sticker-emoji", emoji: el.dataset.stickerEmoji, ...buildReplyPayload() }); cancelReply(); });
+    });
+    root.querySelectorAll("[data-sticker-img]").forEach(el => {
+      el.addEventListener("click", () => {
+        const s = state.stickers.find(x => x.id === el.dataset.stickerImg);
+        if (s) { sendMessage({ type: "sticker", image: s.image, ...buildReplyPayload() }); cancelReply(); }
+      });
+    });
+    const addBtn = document.getElementById("addStickerBtn");
+    if (addBtn) addBtn.addEventListener("click", () => document.getElementById("stickerFileInput").click());
+  } else {
+    root.querySelectorAll("[data-emoji]").forEach(el => {
+      el.addEventListener("click", () => insertEmoji(el.dataset.emoji));
+    });
+  }
+}
+
+let lastCursorPos = null;
+
+function insertEmoji(emoji) {
+  const input = document.getElementById("msgInput");
+  const start = lastCursorPos ?? input.value.length;
+  const end = lastCursorPos ?? input.value.length;
+  input.value = input.value.slice(0, start) + emoji + input.value.slice(end);
+  lastCursorPos = start + emoji.length;
+  document.getElementById("sendBtn").disabled = !input.value.trim();
+}
+
+async function sendMessage(payload, targetChat) {
+  const c = targetChat || state.activeChat;
+  const msgData = { sender: state.profile.name, senderKey: state.profile.key, ts: now(), seenBy: {}, ...payload };
+  await db.ref(`messages/${c.id}`).push(msgData);
+  // update chat previews for both sides
+  const previewText = payload.forwardedFrom ? `↪️ ${payload.forwardedFrom}dan` : (payload.type === "text" ? payload.text : (payload.type === "image" ? "📷 Rasm" : payload.type === "voice" ? "🎤 Ovozli xabar" : "🖼️ Stiker"));
+  const updates = {};
+  updates[`userChats/${state.profile.key}/${c.id}/lastTs`] = now();
+  updates[`userChats/${state.profile.key}/${c.id}/lastMsg`] = previewText;
+  if (c.type === "dm" && c.otherKey && c.otherKey !== state.profile.key) {
+    updates[`userChats/${c.otherKey}/${c.id}/lastTs`] = now();
+    updates[`userChats/${c.otherKey}/${c.id}/lastMsg`] = previewText;
+  }
+  db.ref().update(updates);
+}
+
+async function saveEdit(id, newText) {
+  const c = state.activeChat;
+  await db.ref(`messages/${c.id}/${id}`).update({ text: newText, edited: true, editedAt: now() });
+  state.editingId = null;
+  renderEditingBar();
+}
+
+async function deleteMessage(id) {
+  const c = state.activeChat;
+  await db.ref(`messages/${c.id}/${id}`).update({ deleted: true, text: null, image: null, emoji: null, audio: null });
+  state.openActionsFor = null;
+}
+
+function startEdit(id) {
+  const msg = state.messages.find(m => m.id === id);
+  if (!msg || msg.type !== "text") return;
+  state.editingId = id;
+  state.openActionsFor = null;
+  state.replyTo = null;
+  const input = document.getElementById("msgInput");
+  input.value = msg.text;
+  input.focus();
+  document.getElementById("sendBtn").disabled = false;
+  renderEditingBar();
+  renderReplyBar();
+  renderMessages();
+}
+
+function tickIcon(m, c) {
+  if (m.senderKey !== state.profile.key) return "";
+  let seenByOthers;
+  if (c.type === "dm") {
+    seenByOthers = m.seenBy && m.seenBy[c.otherKey];
+  } else {
+    seenByOthers = m.seenBy && Object.keys(m.seenBy).length > 0;
+  }
+  return seenByOthers
+    ? `<span style="color:#7DE0FF;">${ICONS.check2}</span>`
+    : `<span style="opacity:0.8;">${ICONS.check1}</span>`;
+}
+
+function renderOneMessage(m, c) {
+  const mine = m.senderKey === state.profile.key;
+  const bubbleClass = "bubble " + (mine ? "mine" : "theirs") + ((m.type === "sticker" || m.type === "sticker-emoji") ? " sticker" : "");
+  const nameHtml = (!mine && c.type === "group" && m.type !== "sticker" && m.type !== "sticker-emoji") ? `<div class="sender-name">${esc(m.sender)}</div>` : "";
+  const replyHtml = (m.replyTo && !m.deleted) ? `
+    <div style="border-left:3px solid ${mine ? 'rgba(255,255,255,0.6)' : '#229ED9'}; padding:2px 8px; margin-bottom:4px; font-size:12.5px; opacity:0.85; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px;">
+      <b>${esc(m.replyTo.sender)}</b><br>${esc(m.replyTo.preview)}
+    </div>` : "";
+  let bodyHtml;
+  if (m.deleted) {
+    bodyHtml = `<div class="msg-text deleted">Xabar o'chirildi</div>`;
+  } else if (m.type === "image") {
+    bodyHtml = `<img class="msg-img" src="${m.image}" />`;
+  } else if (m.type === "voice") {
+    bodyHtml = `<audio controls src="${m.audio}" style="width:210px; height:36px;"></audio>`;
+  } else if (m.type === "sticker") {
+    bodyHtml = `<img class="msg-sticker" src="${m.image}" />`;
+  } else if (m.type === "sticker-emoji") {
+    bodyHtml = `<div class="msg-sticker-emoji">${m.emoji}</div>`;
+  } else {
+    const highlighted = (state.searchMode && state.searchQuery.trim() && m.type === "text") ? "msg-highlight" : "";
+    bodyHtml = `<div class="msg-text ${highlighted}">${esc(m.text)}</div>`;
+  }
+  const editedTag = (m.edited && !m.deleted) ? `<span class="edited-tag">tahrirlangan</span>` : "";
+  const forwardTag = (m.forwardedFrom && !m.deleted) ? `<div style="font-size:11.5px; opacity:0.75; margin-bottom:2px;">${ICONS.forward} ${esc(m.forwardedFrom)}dan uzatilgan</div>` : "";
+  const showActions = state.openActionsFor === m.id;
+  const withinDeleteWindow = (now() - m.ts) < 48 * 3600 * 1000;
+  const actionsHtml = (!m.deleted && showActions) ? `
+    <div class="action-row">
+      <button class="action-btn" data-reply="${m.id}">${ICONS.reply} Javob</button>
+      <button class="action-btn" data-forward="${m.id}">${ICONS.forward} Uzatish</button>
+      <button class="action-btn" data-pin="${m.id}">${ICONS.pin} ${state.pinned && state.pinned.id === m.id ? "Yechish" : "Qadash"}</button>
+      ${(mine && m.type === "text") ? `<button class="action-btn" data-edit="${m.id}">Tahrirlash</button>` : ""}
+      <button class="action-btn danger" data-delme="${m.id}">Mendan o'chirish</button>
+      ${(mine && withinDeleteWindow) ? `<button class="action-btn danger" data-delall="${m.id}">Hammadan o'chirish</button>` : ""}
+    </div>` : "";
+  const metaColor = mine ? "rgba(255,255,255,0.75)" : "#9099A3";
+  const isSticker = m.type === "sticker" || m.type === "sticker-emoji";
+  const metaHtml = m.deleted ? "" : `<div class="msg-meta" style="color:${isSticker ? '#9099A3' : metaColor}">${editedTag} ${timeStr(m.ts)} ${tickIcon(m, c)}</div>`;
+  return `
+    <div class="row ${mine ? 'mine' : 'theirs'}">
+      <div class="bubble-wrap ${mine ? 'mine' : ''}">
+        ${!m.deleted ? actionsHtml : ""}
+        <div class="${bubbleClass}" data-msg="${m.id}">
+          ${nameHtml}
+          ${forwardTag}
+          ${replyHtml}
+          ${bodyHtml}
+          ${metaHtml}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderMessages() {
+  const area = document.getElementById("msgArea");
+  if (!area) return;
+  const c = state.activeChat;
+  const wasNearBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
+
+  let visible = state.messages.filter(m => !state.hiddenLocal.includes(m.id));
+  if (state.searchMode && state.searchQuery.trim()) {
+    const q = state.searchQuery.trim().toLowerCase();
+    visible = visible.filter(m => m.type === "text" && !m.deleted && m.text && m.text.toLowerCase().includes(q));
+  }
+
+  let lastDateStr = null;
+  const parts = [];
+  visible.forEach(m => {
+    const dStr = new Date(m.ts).toDateString();
+    if (dStr !== lastDateStr) {
+      parts.push(`<div class="date-sep"><span>${dateLabel(m.ts)}</span></div>`);
+      lastDateStr = dStr;
+    }
+    parts.push(renderOneMessage(m, c));
+  });
+  area.innerHTML = parts.join("") || (state.searchMode ? `<div class="empty-state" style="margin-top:40px;">Hech narsa topilmadi</div>` : "");
+
+  area.querySelectorAll("[data-msg]").forEach(el => {
+    el.addEventListener("click", () => {
+      const id = el.dataset.msg;
+      const msg = state.messages.find(m => m.id === id);
+      if (!msg || msg.deleted) return;
+      state.openActionsFor = state.openActionsFor === id ? null : id;
+      renderMessages();
+    });
+  });
+  area.querySelectorAll("[data-reply]").forEach(el => {
+    el.addEventListener("click", (e) => { e.stopPropagation(); startReply(el.dataset.reply); });
+  });
+  area.querySelectorAll("[data-edit]").forEach(el => {
+    el.addEventListener("click", (e) => { e.stopPropagation(); startEdit(el.dataset.edit); });
+  });
+  area.querySelectorAll("[data-forward]").forEach(el => {
+    el.addEventListener("click", (e) => { e.stopPropagation(); openForwardPicker(el.dataset.forward); });
+  });
+  area.querySelectorAll("[data-pin]").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (state.pinned && state.pinned.id === el.dataset.pin) db.ref(`chatMeta/${c.id}/pinned`).remove();
+      else pinMessage(el.dataset.pin);
+    });
+  });
+  area.querySelectorAll("[data-delme]").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = el.dataset.delme;
+      state.hiddenLocal.push(id);
+      localSet(`chatly-hidden-${c.id}`, JSON.stringify(state.hiddenLocal));
+      state.openActionsFor = null;
+      renderMessages();
+    });
+  });
+  area.querySelectorAll("[data-delall]").forEach(el => {
+    el.addEventListener("click", (e) => { e.stopPropagation(); deleteMessage(el.dataset.delall); });
+  });
+
+  if (wasNearBottom) area.scrollTop = area.scrollHeight;
+}
+
+// ---- Android/browser back button handling ----
+// Priority while in a chat: close keyboard -> close emoji panel -> cancel edit -> cancel reply -> leave chat to home.
+// Only the last step actually consumes the guard entry; every earlier step re-arms it for the next back press.
+window.addEventListener("popstate", () => {
+  if (state.screen !== "chat") return; // nothing of ours to intercept; let default (app exit) happen
+  const input = document.getElementById("msgInput");
+  if (input && document.activeElement === input) {
+    input.blur();
+    pushChatBackGuard();
+    return;
+  }
+  if (state.panel) {
+    state.panel = null;
+    renderPanel();
+    pushChatBackGuard();
+    return;
+  }
+  if (state.editingId) {
+    state.editingId = null;
+    if (input) input.value = "";
+    const sendBtn = document.getElementById("sendBtn");
+    if (sendBtn) sendBtn.disabled = true;
+    renderEditingBar();
+    pushChatBackGuard();
+    return;
+  }
+  if (state.replyTo) {
+    cancelReply();
+    pushChatBackGuard();
+    return;
+  }
+  chatBackGuardPushed = false; // guard already consumed by this actual back navigation
+  stopChatListeners();
+  state.screen = "home";
+  state.activeChat = null;
+  render();
+  startHomeListener();
+});
+
+// ---- boot ----
+(async () => {
+  setupViewportFix();
+  applyTheme();
+  history.replaceState({ base: true }, "");
+  const stored = localGet("chatly-profile");
+  if (stored) {
+    const p = JSON.parse(stored);
+    if (!p.key) p.key = safeKey(p.name);
+    state.profile = p;
+    state.screen = "home";
+    render();
+    // refresh photo/color from server in case changed on another device
+    try {
+      const snap = await db.ref(`users/${p.key}`).get();
+      if (snap.exists()) { state.profile = snap.val(); localSet("chatly-profile", JSON.stringify(state.profile)); }
+      else { await db.ref(`users/${p.key}`).set(p); await db.ref(`userIds/${p.id}`).set(p.key); }
+    } catch {}
+    await afterLogin();
+  } else {
+    state.screen = "login";
+    render();
+  }
+})();
+</script>
+</body>
+</html>
